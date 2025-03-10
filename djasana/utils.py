@@ -184,8 +184,10 @@ def sync_custom_fields(client, custom_field_settings, workspace_id, project_id):
         if custom_field_remote_id not in synced_ids:
             custom_field_dict = client.custom_fields.find_by_id(custom_field_remote_id)
             if custom_field_dict["created_by"]:
-                user = User.objects.get(gid=custom_field_dict.get('created_by').get('gid'))
-                custom_field_dict['created_by'] = user
+                created_by = custom_field_dict.get('created_by')
+                if created_by and created_by.get('gid'):
+                    user = User.objects.get(gid=custom_field_dict.get('created_by').get('gid'))
+                    custom_field_dict['created_by'] = user
             CustomField.objects.update_or_create(
                 remote_id=custom_field_remote_id, defaults=custom_field_dict
             )

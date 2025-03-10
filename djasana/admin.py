@@ -36,6 +36,7 @@ class AttachmentAdmin(admin.ModelAdmin):
 class CustomFieldAdmin(admin.ModelAdmin):
     exclude = ("resource_type", "type")
     readonly_fields = (asana_link, "gid")
+    list_fields = ("default_access_level",)
 
 
 @admin.register(models.CustomFieldSetting)

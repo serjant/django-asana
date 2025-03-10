@@ -10,7 +10,6 @@ from .connect import client_connect
 
 logger = logging.getLogger(__name__)
 
-
 ASANA_BASE_URL = "https://app.asana.com/0/"
 COLORS = [
     "dark-pink",
@@ -99,7 +98,7 @@ class Attachment(NamedModel):
         ("other", "other"),
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    download_url = models.URLField(max_length=5120)
+    download_url = models.URLField(max_length=5120, null=True, blank=True)
     host = models.CharField(choices=host_choices, max_length=24)
     parent = models.ForeignKey("Task", to_field="remote_id", on_delete=models.CASCADE)
     permanent_url = models.URLField(max_length=5120)
@@ -121,6 +120,22 @@ class CustomField(NamedModel):
         ("number", "number"),
         ("text", "text"),
     )
+
+    representation_type_choices = (
+        ("text", "text"),
+        ("enum", "enum"),
+        ("multi_enum", "multi_enum"),
+        ("number", "number"),
+        ("date", "date"),
+        ("people", "people"),
+    )
+
+    default_access_level_choices = (
+        ("admin", _("admin")),
+        ("member", _("member")),
+        ("commenter", _("commenter")),
+    )
+
     precision_choices = [(num, num) for num in range(7)]
 
     created_by = models.ForeignKey(
@@ -141,6 +156,22 @@ class CustomField(NamedModel):
     )
     type = models.CharField(  # Deprecated; use resource_subtype
         choices=subtype_choices, max_length=24, null=True, blank=True
+    )
+    representation_type = models.CharField(
+        choices=representation_type_choices, max_length=255, null=True, blank=True
+    )
+    default_access_level = models.CharField(
+        choices=default_access_level_choices, max_length=255, null=True, blank=True
+    )
+    is_formula_field = models.BooleanField(default=False)
+    asana_created_field = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    id_prefix = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    privacy_setting = models.CharField(
+        max_length=255, null=True, blank=True
     )
 
 
@@ -173,6 +204,7 @@ class Project(NamedModel):
         ("timeline", _("timeline")),
     )
 
+
     archived = models.BooleanField(default=False)
     color = models.CharField(
         choices=COLOR_CHOICES, max_length=16, null=True, blank=True
@@ -192,6 +224,7 @@ class Project(NamedModel):
     default_view = models.CharField(
         choices=default_view_choices, max_length=16, null=True, blank=True
     )
+
     due_date = models.DateField(null=True, blank=True)
     due_on = models.DateField(null=True, blank=True)
     followers = models.ManyToManyField(
