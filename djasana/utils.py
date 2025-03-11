@@ -90,8 +90,10 @@ def sync_project(client, project_dict):
         )
         project_dict["owner_id"] = owner["gid"]
     team = project_dict.pop("team")
-    Team.objects.get_or_create(remote_id=team["gid"], defaults={"name": team["name"]})
-    project_dict["team_id"] = team["gid"]
+    if team:
+        team_gid = team.pop("gid")
+        Team.objects.get_or_create(remote_id=team_gid, defaults={"name": team.get("name")})
+        project_dict["team_id"] = team_gid
     project_dict["workspace_id"] = project_dict.pop("workspace")["gid"]
     custom_field_settings = project_dict.pop("custom_field_settings", None)
     # Convert string to boolean:
@@ -110,9 +112,24 @@ def sync_project(client, project_dict):
     followers = User.objects.filter(id__in=follower_ids)
     project.followers.set(followers)
     if project_status_dict:
+        user = None
+        created_by = project_status_dict.pop('created_by')
+        if created_by and created_by.get('gid'):
+            gid = created_by.get('gid')
+            user = User.objects.filter(gid=gid).first()
+            if not user:
+                user = User(
+                    gid=gid,
+                    name=created_by.get('name'),
+                    resource_type=created_by.get('resource_type'),
+                    remote_id=gid
+                )
+                user.save()
+
         current_status_id = project_status_dict.pop("gid")
         project_status = ProjectStatus.objects.update_or_create(
-            remote_id=current_status_id, defaults=project_status_dict
+            remote_id=current_status_id, defaults=project_status_dict,
+            created_by=user
         )[0]
         project.current_status = project_status
         project.save(update_fields=["current_status"])
@@ -186,7 +203,16 @@ def sync_custom_fields(client, custom_field_settings, workspace_id, project_id):
             if custom_field_dict["created_by"]:
                 created_by = custom_field_dict.get('created_by')
                 if created_by and created_by.get('gid'):
-                    user = User.objects.get(gid=custom_field_dict.get('created_by').get('gid'))
+                    gid = created_by.get('gid')
+                    user = User.objects.filter(gid=gid).first()
+                    if not user:
+                        user = User(
+                            gid=gid,
+                            name=created_by.get('name'),
+                            resource_type=created_by.get('resource_type'),
+                            remote_id=gid
+                        )
+                        user.save()
                     custom_field_dict['created_by'] = user
             CustomField.objects.update_or_create(
                 remote_id=custom_field_remote_id, defaults=custom_field_dict

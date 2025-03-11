@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 __author__ = 'David Baum'
 
-import logging
+import logging, time
 
 from asana.error import NotFoundError, InvalidTokenError, ForbiddenError
 from django.apps import apps
@@ -47,6 +47,7 @@ class AsanaSynchronizer(object):
             projects: List[str] = [],
             stdout: OutputWrapper = None,
     ):
+        self.synced_ids = []
         self.commit = commit
         self.stdout = stdout
         self.process_archived = process_archived
@@ -92,14 +93,17 @@ class AsanaSynchronizer(object):
         if User in models:
             for user in self.client.users.find_all({"workspace": workspace_id}):
                 self._sync_user(user, workspace)
+                time.sleep(0.5)
 
         if Tag in models:
             for tag in self.client.tags.find_by_workspace(workspace_id):
                 self._sync_tag(tag, workspace)
+                time.sleep(0.5)
 
         if Team in models:
             for team in self.client.teams.find_by_organization(workspace_id):
                 self._sync_team(team)
+                time.sleep(0.5)
 
         if Project in models:
             for project_id in project_ids:
@@ -257,6 +261,7 @@ class AsanaSynchronizer(object):
         if Task in models and not project_dict["archived"] or self.process_archived:
             for task in self.client.tasks.find_all({"project": project_id}):
                 self._sync_task(task, project, models)
+                time.sleep(0.5)
             # Delete local tasks for this project that are no longer in Asana.
             tasks_to_delete = (
                 Task.objects.filter(projects=project)

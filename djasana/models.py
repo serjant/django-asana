@@ -141,8 +141,8 @@ class CustomField(NamedModel):
     created_by = models.ForeignKey(
         "User", to_field="remote_id", null=True, on_delete=models.SET_NULL
     )
-    description = models.CharField(max_length=1024, null=True, blank=True)
-    enum_options = models.CharField(max_length=1024, null=True, blank=True)
+    description = models.CharField(max_length=8192, null=True, blank=True)
+    enum_options = models.CharField(max_length=50000, null=True, blank=True)
     is_global_to_workspace = models.BooleanField(default=False)
     has_notifications_enabled = models.BooleanField(default=False)
     precision = models.SmallIntegerField(
@@ -281,6 +281,8 @@ class ProjectStatus(BaseModel):
         blank=True,
         on_delete=models.SET_NULL,
     )
+    modified_at = models.DateTimeField(auto_now=True)
+    author = models.CharField(max_length=255, null=True, blank=True)
     resource_type = models.CharField(
         max_length=24, null=True, blank=True, default="project_status"
     )

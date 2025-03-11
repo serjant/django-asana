@@ -1,5 +1,5 @@
 """The django management command sync_from_asana"""
-import logging
+import logging, traceback
 from django.core.management.base import BaseCommand, CommandError
 from djasana.synchronizer import AsanaSynchronizer
 
@@ -101,7 +101,9 @@ class Command(BaseCommand):
         try:
             synchronizer.run_sync()
         except Exception as e:
-            raise CommandError(e.message)
+            error_message = traceback.format_exc()
+            logger.error(error_message)
+            raise CommandError(e)
 
     @staticmethod
     def _confirm():
