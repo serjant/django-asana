@@ -45,7 +45,8 @@ class AsanaSynchronizer(object):
             verbosity: int = 0,
             workspaces: List[str] = [],
             projects: List[str] = [],
-            stdout: OutputWrapper = None,
+            stdout: Union[OutputWrapper, None] = None,
+            app_logger: Union[logging.Logger, None] = None,
     ):
         self.synced_ids = []
         self.commit = commit
@@ -53,13 +54,13 @@ class AsanaSynchronizer(object):
         self.process_archived = process_archived
         self.exclude_models = exclude_models
         self.include_models = include_models
-
+        self.logger = app_logger or logger
         self.process_models = self._get_models()
         if verbosity >= 1:
             message = "Synchronizing data from Asana."
             if self.stdout:
                 self.stdout.write(message)
-            logger.info(message)
+            self.logger.info(message)
         self.workspaces = workspaces
         if settings.ASANA_WORKSPACE:
             workspaces.append(settings.ASANA_WORKSPACE)
@@ -73,8 +74,8 @@ class AsanaSynchronizer(object):
 
     def _sync_workspace_id(self, workspace_id, projects, models):
         workspace_dict = self.client.workspaces.find_by_id(workspace_id)
-        logger.debug("Sync workspace %s", workspace_dict["name"])
-        logger.debug(workspace_dict)
+        self.logger.debug("Sync workspace %s", workspace_dict["name"])
+        self.logger.debug(workspace_dict)
         if Workspace in models and self.commit:
             remote_id = workspace_dict["gid"]
             workspace_dict.pop("email_domains")
@@ -113,7 +114,7 @@ class AsanaSynchronizer(object):
             message = f"Successfully synced workspace {workspace.name}."
             if self.stdout:
                 self.stdout.write(self.style.SUCCESS(message))
-            logger.info(message)
+            self.logger.info(message)
 
     def _check_sync_project_id(self, project_id, workspace, models):
         """If we have a valid sync token for this project sync new events
@@ -170,6 +171,8 @@ class AsanaSynchronizer(object):
         bad_list = []
 
         projects_ = self.client.projects.find_all({"workspace": workspace_id})
+        self.logger.info("Sync project %s", projects)
+
         if projects:
             for project in projects:
                 for prj in projects_:
@@ -248,13 +251,13 @@ class AsanaSynchronizer(object):
                 )
             if self.stdout:
                 self.stdout.write(self.style.SUCCESS(message))
-            logger.info(message)
+            self.logger.info(message)
 
     def _sync_project_id(self, project_id, models):
         """Sync this project by polling it. Returns boolean 'is archived?'"""
         project_dict = self.client.projects.find_by_id(project_id)
-        logger.debug("Sync project %s", project_dict["name"])
-        logger.debug(project_dict)
+        self.logger.debug("Sync project %s", project_dict["name"])
+        self.logger.debug(project_dict)
         if self.commit:
             project = sync_project(self.client, project_dict)
 
@@ -276,12 +279,12 @@ class AsanaSynchronizer(object):
                 )
                 if self.stdout:
                     self.stdout.write(self.style.SUCCESS(message))
-                logger.info(message)
+                self.logger.info(message)
         if self.commit:
             message = f"Successfully synced project {project.name}."
             if self.stdout:
                 self.stdout.write(self.style.SUCCESS(message))
-            logger.info(message)
+            self.logger.info(message)
         return project_dict["archived"]
 
     def _sync_story(self, story):
@@ -289,15 +292,15 @@ class AsanaSynchronizer(object):
         try:
             story_dict = self.client.stories.find_by_id(story_id)
         except NotFoundError as error:
-            logger.info(error.response)
+            self.logger.info(error.response)
             return
-        logger.debug(story_dict)
+        self.logger.debug(story_dict)
         remote_id = story_dict["gid"]
         sync_story(remote_id, story_dict)
 
     def _sync_tag(self, tag, workspace):
         tag_dict = self.client.tags.find_by_id(tag["gid"])
-        logger.debug(tag_dict)
+        self.logger.debug(tag_dict)
         if self.commit:
             remote_id = tag_dict["gid"]
             tag_dict["workspace"] = workspace
@@ -323,8 +326,8 @@ class AsanaSynchronizer(object):
             except Task.DoesNotExist:
                 pass
             return
-        logger.debug("Sync task %s", task_dict["name"])
-        logger.debug(task_dict)
+        self.logger.debug("Sync task %s", task_dict["name"])
+        self.logger.debug(task_dict)
 
         if Task in models and self.commit:
             remote_id = task_dict["gid"]
@@ -364,7 +367,7 @@ class AsanaSynchronizer(object):
 
     def _sync_team(self, team):
         team_dict = self.client.teams.find_by_id(team["gid"])
-        logger.debug(team_dict)
+        self.logger.debug(team_dict)
         if self.commit:
             remote_id = team_dict["gid"]
             organization = team_dict.pop("organization")
@@ -375,7 +378,7 @@ class AsanaSynchronizer(object):
 
     def _sync_user(self, user, workspace):
         user_dict = self.client.users.find_by_id(user["gid"])
-        logger.debug(user_dict)
+        self.logger.debug(user_dict)
         if self.commit:
             remote_id = user_dict["gid"]
             user_dict.pop("workspaces")
