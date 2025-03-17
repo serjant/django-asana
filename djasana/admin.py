@@ -64,6 +64,7 @@ class TaskForm(forms.ModelForm):
             "completed_at",
             "due_at",
             "due_on",
+            "modified_at",
             "parent",
             "notes",
             "projects",
@@ -86,17 +87,30 @@ class TaskAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     exclude = ("resource_type",)
     form = TaskForm
-    list_display = ("name", "assignee", "completed", "due", asana_link)
+    list_display = (
+        "name",
+        "assignee",
+        "completed",
+        "due",
+        "completed_at",
+        "modified_at",
+        "due_at",
+        "due_on", asana_link
+    )
     list_filter = (
         "completed",
         "projects__workspace",
-        "projects__team",
+        "completed_at",
+        "due_at",
+        "due_on",
+        "modified_at",
         "assignee",
         "projects",
     )
     raw_id_fields = ("assignee", "parent")
     readonly_fields = (asana_link, "gid")
     search_fields = ("remote_id", "name")
+    list_per_page = 25
 
 
 @admin.register(models.Story)
