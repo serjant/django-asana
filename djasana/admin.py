@@ -64,7 +64,6 @@ class TaskForm(forms.ModelForm):
             "completed_at",
             "due_at",
             "due_on",
-            "modified_at",
             "parent",
             "notes",
             "projects",
