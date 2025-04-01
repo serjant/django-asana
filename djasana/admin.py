@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.admin import widgets
+from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-
 from djasana import models
 
 
@@ -55,6 +56,47 @@ class ProjectAdmin(admin.ModelAdmin):
     search_fields = ("remote_id", "name")
 
 
+@admin.register(models.Tag)
+class TagAdmin(admin.ModelAdmin):
+    date_hierarchy = "created_at"
+    exclude = ("resource_type",)
+    list_display = ("__str__", "color", "notes", "workspace_link", "followers_list",)
+    list_filter = ("workspace",)
+    readonly_fields = ("workspace", "followers",)
+    search_fields = ("notes", "color")
+
+    def workspace_link(self, obj):
+        """Render workspace as a clickable link in the admin list."""
+        if obj.workspace:
+            url = reverse(
+                f"admin:{models.Workspace._meta.app_label}_{models.Workspace._meta.model_name}_change",
+                args=[obj.workspace.id]
+            )
+            return format_html('<a href="{}">{}</a>', url, obj.workspace)
+        return "-"
+
+    def followers_list(self, obj):
+        """Render followers as links in the admin list."""
+        followers = obj.followers.all()
+        if not followers:
+            return "-"
+
+        links = [
+            format_html(
+                '<a href="{}">{}</a>',
+                reverse(
+                    f"admin:{models.User._meta.app_label}_{models.User._meta.model_name}_change",
+                    args=[user.id]),
+                user.username
+            )
+            for user in followers
+        ]
+        return format_html(", ".join(links))
+
+    followers_list.short_description = "Followers"
+    workspace_link.short_description = "Workspace"
+
+
 class TaskForm(forms.ModelForm):
     class Meta:
         fields = (
@@ -68,6 +110,7 @@ class TaskForm(forms.ModelForm):
             "notes",
             "projects",
             "custom_fields",
+            "tags"
         )
 
     def __init__(self, *args, **kwargs):
@@ -94,7 +137,9 @@ class TaskAdmin(admin.ModelAdmin):
         "completed_at",
         "modified_at",
         "due_at",
-        "due_on", asana_link
+        "due_on",
+        "tags_list",
+        asana_link
     )
     list_filter = (
         "completed",
@@ -110,6 +155,24 @@ class TaskAdmin(admin.ModelAdmin):
     readonly_fields = (asana_link, "gid")
     search_fields = ("remote_id", "name")
     list_per_page = 25
+
+    def tags_list(self, obj):
+        """Render followers as links in the admin list."""
+        tags = obj.tags.all()
+        if not tags:
+            return "-"
+
+        links = [
+            format_html(
+                '<a href="{}">{}</a>',
+                reverse(
+                    f"admin:{models.Tag._meta.app_label}_{models.Tag._meta.model_name}_change",
+                    args=[tag.id]),
+                tag.name
+            )
+            for tag in tags
+        ]
+        return format_html(", ".join(links))
 
 
 @admin.register(models.Story)
